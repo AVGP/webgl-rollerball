@@ -1,17 +1,12 @@
-Physijs.scripts.worker = 'lib/physijs_worker.js';
-Physijs.scripts.ammo = 'ammo.js';
-
-var scene = new Physijs.Scene();
-scene.setGravity(new THREE.Vector3( 0, -50, 0 ));
-scene.addEventListener('update', function() {
-  scene.simulate(undefined, 2);
-});
-
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-var renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
+var WIDTH = document.body.clientWidth, HEIGHT = document.body.clientHeight;
+var scene = new THREE.Scene(),
+    camera = new THREE.PerspectiveCamera(75, WIDTH / HEIGHT, 0.1, 1000),
+    renderer = new THREE.WebGLRenderer();
 document.body.appendChild(renderer.domElement);
+// React to silly browsers...
+WIDTH = document.body.clientWidth;
+HEIGHT = document.body.clientHeight;
+renderer.setSize(WIDTH, HEIGHT);
 
 light = new THREE.DirectionalLight(0xffffff);
 
@@ -32,21 +27,18 @@ scene.add(light);
 var geometry = new THREE.CubeGeometry(1, 1, 1);
 var material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
 var cube = new THREE.Mesh(geometry, material);
+cube.position.set(10, 1, -20);
 scene.add(cube);
 camera.position.set(0,5,20);
 
 var grounds = [],
     groundGeometry = new THREE.CubeGeometry(10, 1, 10, 10, 10),
-    groundMaterial = Physijs.createMaterial(
-      new THREE.MeshLambertMaterial({ color: 0xeeeeee }),
-      0.4, // restitution ("bounciness")
-      0.8  // friction
-    );
+    groundMaterial = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
 
 for(var z=0;z<10;z++) {
   grounds[z] = [];
   for(var x=0;x<10;x++) {
-    var ground = new Physijs.BoxMesh(groundGeometry, groundMaterial, 0);
+    var ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.position.y = -3;
     ground.position.x = (x - 5) * 10;
     ground.position.z = (z - 5) * 10;
@@ -55,13 +47,12 @@ for(var z=0;z<10;z++) {
   }
 }
 
-var ball = new Physijs.SphereMesh(new THREE.SphereGeometry(3, 16, 16),
-  Physijs.createMaterial(
-    new THREE.MeshLambertMaterial({color: 0xff0000, reflectivity: .8}),
-    0.4, // restitution ("bounciness")
-    0.6  // friction
-  ),
-  1
+var r = Math.round(Math.random() * 255),
+    g = Math.round(Math.random() * 255),
+    b = Math.round(Math.random() * 255);
+var ball = new THREE.Mesh(
+  new THREE.SphereGeometry(3, 16, 16),
+  new THREE.MeshLambertMaterial({color: 'rgb(' + r + ',' + g + ',' + b + ')', reflectivity: .8})
 );
 
 ball.position.y = 1.5;
@@ -75,15 +66,37 @@ window.addEventListener("deviceorientation", function(e) {
       ry = e.beta / 180;
   ball.translateZ(-dz);
   ball.rotation.y -= ry;
-  ball.__dirtyPosition = true;
-  ball.__dirtyRotation = true;
+});
+window.addEventListener("keydown", function(e) {
+    switch(e.keyCode) {
+      case 37: // left arrow
+        ball.rotation.y += 0.05;
+        break;
+      case 38: // up arrow
+      ball.translateZ(-0.3);
+        break;
+      case 39: // right arrow
+        ball.rotation.y -= 0.05;
+        break;
+      case 40: // down arrow
+        ball.translateZ(0.3);
+        break;
+    }
 });
 
+var score = 0;
 
 function updateGame() {
 	requestAnimationFrame(updateGame);
 	renderer.render(scene, camera);
+  var ballPos = ball.position, cubePos = cube.position;
+
+  if(  (ballPos.x + 1 > cubePos.x - 0.5 && ballPos.z + 1 > cubePos.z - 0.5 && ballPos.z - 1 < cubePos.z + 0.5)
+    || (ballPos.x - 1 < cubePos.x + 0.5 && ballPos.z + 1 > cubePos.z - 0.5 && ballPos.z - 1 < cubePos.z + 0.5)) {
+    cube.position.x = -50 + Math.random() * 100;
+    cube.position.z = -50 + Math.random() * 100;
+    document.getElementById("score").textContent = "Score: " + (++score);
+  }
 }
 
 updateGame();
-scene.simulate();
